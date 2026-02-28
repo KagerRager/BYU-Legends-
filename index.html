@@ -104,6 +104,77 @@
 
     /* ── Critical layout fallbacks when Tailwind CDN is unavailable ── */
     @media (min-width: 768px) { .md\:flex { display: flex !important; } }
+
+    /* ── Animated starfield background ──────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at 20% 50%, rgba(0,98,184,.15) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(255,215,0,.08) 0%, transparent 50%),
+                  #002E5D;
+      pointer-events: none;
+    }
+
+    /* ── Combo counter ───────────────────────────────────────── */
+    @keyframes comboPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+    #combo-display {
+      transition: color .2s;
+    }
+    #combo-display.pop { animation: comboPop .25s ease-out; }
+
+    /* ── Tier badge colors ───────────────────────────────────── */
+    .tier-bronze  { border-color: #cd7f32 !important; }
+    .tier-silver  { border-color: #C0C0C0 !important; }
+    .tier-gold    { border-color: #FFD700 !important; }
+    .tier-platinum{ border-color: #00e5ff !important; }
+    .tier-diamond { border-color: #b9f2ff !important; box-shadow: 0 0 12px #00e5ff66; }
+    .tier-legendary { border-color: #ff6600 !important; box-shadow: 0 0 18px #ff660088; }
+
+    /* ── Unlock flash ────────────────────────────────────────── */
+    @keyframes unlockFlash {
+      0%,100% { opacity: 0; } 20%,80% { opacity: .6; }
+    }
+    .unlock-flash {
+      position: fixed; inset: 0; z-index: 200;
+      background: radial-gradient(circle, #FFD700 0%, transparent 70%);
+      pointer-events: none;
+      animation: unlockFlash .6s ease-out forwards;
+    }
+
+    /* ── Auto-clicker section ────────────────────────────────── */
+    .upgrade-card {
+      transition: box-shadow .2s, transform .2s;
+    }
+    .upgrade-card:hover {
+      box-shadow: 0 0 14px rgba(255,215,0,.4);
+      transform: translateY(-1px);
+    }
+
+    /* ── Active legend pulsing glow on jersey ────────────────── */
+    @keyframes jerseyGlow {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(0,98,184,.6)); }
+      50%      { filter: drop-shadow(0 0 22px rgba(0,98,184,.95)); }
+    }
+    #jersey-svg.has-legend { animation: jerseyGlow 2s ease-in-out infinite; }
+
+    /* ── Passive income counter ──────────────────────────────── */
+    @keyframes tickUp {
+      0%   { opacity: 0; transform: translateY(0); }
+      50%  { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-40px); }
+    }
+    .auto-tick {
+      position: fixed; pointer-events: none;
+      font-family: 'Bebas Neue', monospace;
+      font-size: 1.1rem; color: #00e5ff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.5);
+      animation: tickUp 1.2s ease-out forwards;
+      z-index: 9998;
+    }
   </style>
 </head>
 
@@ -133,6 +204,17 @@
         <div id="hud-prestige" class="font-varsity text-3xl text-yellow-300 leading-none">×1</div>
         <div class="text-xs uppercase tracking-widest opacity-75">Prestige</div>
       </div>
+      <div class="text-center" id="hud-pps-wrap">
+        <div id="hud-pps" class="font-varsity text-3xl text-cyan-300 leading-none">0</div>
+        <div class="text-xs uppercase tracking-widest opacity-75">Pts / Sec</div>
+      </div>
+      <div class="text-center">
+        <div id="combo-display" class="font-varsity text-3xl text-orange-300 leading-none">x1</div>
+        <div class="text-xs uppercase tracking-widest opacity-75">Combo</div>
+      </div>
+      <button onclick="Sound.toggle()" id="sound-btn"
+              class="text-xl px-2 py-1 rounded border border-white/20 hover:bg-white/10 transition"
+              title="Toggle sound" aria-label="Toggle sound">🔊</button>
     </div>
   </div>
 </header>
@@ -217,6 +299,8 @@
         <button class="tab-btn active flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
                 onclick="Game.showTab('gallery')" id="tab-gallery">GALLERY</button>
         <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
+                onclick="Game.showTab('upgrades')" id="tab-upgrades">UPGRADES</button>
+        <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
                 onclick="Game.showTab('collection')" id="tab-collection">COLLECTION</button>
         <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
                 onclick="Game.showTab('stats')" id="tab-stats">STATS</button>
@@ -224,6 +308,9 @@
 
       <!-- Gallery panel -->
       <div id="panel-gallery"></div>
+
+      <!-- Upgrades panel (hidden by default) -->
+      <div id="panel-upgrades" class="hidden"></div>
 
       <!-- Collection panel (hidden by default) -->
       <div id="panel-collection" class="hidden"></div>
@@ -264,6 +351,7 @@ const LEGENDS = [
     jerseyFill: '#002E5D',
     jerseyStroke: '#FFFFFF',
     accentColor: '#FFFFFF',
+    tier: 'bronze',
   },
   {
     id: 'ainge',
@@ -271,7 +359,6 @@ const LEGENDS = [
     number: '22',
     cost: 50,
     ppc: 4,
-    era: 'early-80s',
     title: 'The Multi-Sport Icon',
     description: 'A two-sport All-American who played baseball for the Toronto Blue Jays while being BYU\'s starting quarterback, Ainge later became an NBA All-Star and championship-winning executive.',
     stat1Label: 'Sports played professionally', stat1: '2',
@@ -279,6 +366,7 @@ const LEGENDS = [
     jerseyFill: '#001a3a',
     jerseyStroke: '#0062B8',
     accentColor: '#0062B8',
+    tier: 'bronze',
   },
   {
     id: 'young',
@@ -286,7 +374,6 @@ const LEGENDS = [
     number: '8',
     cost: 150,
     ppc: 8,
-    era: 'mid-80s',
     title: 'The Super Bowl MVP',
     description: 'Finished his BYU career as the top-rated passer in NCAA history. Won Super Bowl XXIX MVP with the 49ers, throwing a record 6 TD passes, and was inducted into the Pro Football Hall of Fame.',
     stat1Label: 'Super Bowl MVPs', stat1: '1',
@@ -294,6 +381,7 @@ const LEGENDS = [
     jerseyFill: '#002E5D',
     jerseyStroke: '#FFD700',
     accentColor: '#FFD700',
+    tier: 'silver',
   },
   {
     id: 'detmer',
@@ -301,7 +389,6 @@ const LEGENDS = [
     number: '14', // Both Nielsen and Detmer wore #14 — historically accurate for BYU's retired numbers
     cost: 500,
     ppc: 16,
-    era: 'early-90s',
     title: 'The Heisman Trophy Winner',
     description: 'Won the 1990 Heisman Trophy by the largest margin in history at the time, set 59 NCAA records, and led BYU to back-to-back WAC championships. His passing records stood for decades.',
     stat1Label: 'NCAA records set', stat1: '59',
@@ -309,14 +396,194 @@ const LEGENDS = [
     jerseyFill: '#001020',
     jerseyStroke: '#FFD700',
     accentColor: '#FFD700',
+    tier: 'gold',
   },
+  {
+    id: 'wilson_marc',
+    name: 'Marc Wilson',
+    number: '6',
+    cost: 800,
+    ppc: 22,
+    pps: 1,
+    era: 'late-70s',
+    title: 'The Architect',
+    description: 'A key building block of BYU\'s passing dynasty, Wilson set the stage for the record-breaking quarterbacks that followed. Led BYU to a 12-1 record and Holiday Bowl victory in 1979.',
+    stat1Label: 'WAC Championships', stat1: '2',
+    stat2Label: 'Holiday Bowl W', stat2: '1979',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#C0C0C0',
+    accentColor: '#C0C0C0',
+    tier: 'silver',
+  },
+  {
+    id: 'mcmahon',
+    name: 'Jim McMahon',
+    number: '9',
+    cost: 2000,
+    ppc: 45,
+    pps: 2,
+    era: 'early-80s',
+    title: 'The Wild One',
+    description: 'One of the most electrifying quarterbacks in college football history. Set 70 NCAA records at BYU and went on to lead the Chicago Bears to a Super Bowl XX title in the 1985 season.',
+    stat1Label: 'NCAA records set', stat1: '70',
+    stat2Label: 'Super Bowl rings', stat2: '1',
+    jerseyFill: '#001a3a',
+    jerseyStroke: '#FF4500',
+    accentColor: '#FF4500',
+    tier: 'gold',
+  },
+  {
+    id: 'bosco',
+    name: 'Robbie Bosco',
+    number: '6',
+    cost: 5000,
+    ppc: 90,
+    pps: 4,
+    era: 'mid-80s',
+    title: 'The National Champion',
+    description: 'Led BYU to its only national championship in 1984, finishing 13-0 and winning the Holiday Bowl MVP. Played through injury to cement his legacy as one of the program\'s greatest leaders.',
+    stat1Label: 'National Titles', stat1: '1',
+    stat2Label: 'Final season record', stat2: '13-0',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+    tier: 'platinum',
+  },
+  {
+    id: 'unga',
+    name: 'Harvey Unga',
+    number: '25',
+    cost: 12000,
+    ppc: 180,
+    pps: 8,
+    era: 'late-2000s',
+    title: 'Thunder Legs',
+    description: 'BYU\'s all-time leading rusher with over 3,900 career yards. A powerful back who combined bruising power with surprising finesse, Unga was the heart of BYU\'s ground game for four seasons.',
+    stat1Label: 'Career rushing yards', stat1: '3,926',
+    stat2Label: 'Career rushing TDs', stat2: '43',
+    jerseyFill: '#001a3a',
+    jerseyStroke: '#00a8ff',
+    accentColor: '#00a8ff',
+    tier: 'silver',
+  },
+  {
+    id: 'collie',
+    name: 'Austin Collie',
+    number: '17',
+    cost: 30000,
+    ppc: 360,
+    pps: 15,
+    era: 'mid-2000s',
+    title: 'The Clutch Receiver',
+    description: 'The ultimate third-down target, Collie\'s legendary work ethic and precise route-running made him BYU\'s go-to receiver. His famous "faith" comment after a miraculous catch became part of BYU lore.',
+    stat1Label: 'Career receiving yards', stat1: '2,547',
+    stat2Label: 'Career receiving TDs', stat2: '28',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#ffffff',
+    accentColor: '#ffffff',
+    tier: 'gold',
+  },
+  {
+    id: 'van_noy',
+    name: 'Kyle Van Noy',
+    number: '3',
+    cost: 75000,
+    ppc: 720,
+    pps: 30,
+    era: 'early-2010s',
+    title: 'The Defensive Legend',
+    description: 'A two-time All-American linebacker who terrorized opposing offenses with elite pass-rushing ability and instincts. Went on to win two Super Bowl rings with the New England Patriots.',
+    stat1Label: 'Super Bowl rings (NFL)', stat1: '2',
+    stat2Label: 'Career NFL sacks', stat2: '40+',
+    jerseyFill: '#001020',
+    jerseyStroke: '#C0C0C0',
+    accentColor: '#C0C0C0',
+    tier: 'platinum',
+  },
+  {
+    id: 'lewis',
+    name: 'Chad Lewis',
+    number: '83',
+    cost: 175000,
+    ppc: 1400,
+    pps: 60,
+    era: 'mid-90s',
+    title: 'The Pro Bowler',
+    description: 'One of the best tight ends in BYU history, Lewis earned three Pro Bowl selections as an Eagle and played a key role in Philadelphia\'s Super Bowl XXXIX run, despite suffering a broken foot.',
+    stat1Label: 'Pro Bowl selections', stat1: '3',
+    stat2Label: 'BYU career TDs', stat2: '24',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#00e5ff',
+    accentColor: '#00e5ff',
+    tier: 'diamond',
+  },
+  {
+    id: 'taysom',
+    name: 'Taysom Hill',
+    number: '4',
+    cost: 450000,
+    ppc: 2800,
+    pps: 120,
+    era: 'mid-2010s',
+    title: 'The Swiss Army Knife',
+    description: 'The most versatile player in BYU history: quarterback, runner, receiver, punter, and kick returner. Taysom Hill\'s unique skillset made him a nightmare to defend, a tradition he continued in the NFL.',
+    stat1Label: 'Career rushing TDs', stat1: '30',
+    stat2Label: 'Positions played', stat2: '5+',
+    jerseyFill: '#001a3a',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+    tier: 'diamond',
+  },
+  {
+    id: 'lavell',
+    name: 'LaVell Edwards',
+    number: '1',
+    cost: 1200000,
+    ppc: 6000,
+    pps: 260,
+    era: '1972-2000',
+    title: 'Architect of a Dynasty',
+    description: 'The legendary head coach who built BYU into a national powerhouse. His 29-year career produced a national championship, 19 conference titles, and 257 wins. Inducted into the College Football Hall of Fame.',
+    stat1Label: 'Career wins', stat1: '257',
+    stat2Label: 'Conference titles', stat2: '19',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+    tier: 'legendary',
+  },
+  {
+    id: 'zach',
+    name: 'Zach Wilson',
+    number: '1',
+    cost: 3000000,
+    ppc: 12000,
+    pps: 500,
+    era: 'early-2020s',
+    title: 'The First-Round Pick',
+    description: 'The most physically gifted BYU quarterback in the modern era. His off-platform throws, arm strength, and dual-threat ability led to a historic 2020 season and the #2 overall pick in the 2021 NFL Draft.',
+    stat1Label: '2020 completion %', stat1: '73.5',
+    stat2Label: 'NFL Draft pick', stat2: '#2 Overall',
+    jerseyFill: '#001020',
+    jerseyStroke: '#00e5ff',
+    accentColor: '#00e5ff',
+    tier: 'legendary',
+  },
+];
+
+const UPGRADES = [
+  { id: 'auto1', name: 'Team Trainer', desc: '+5 pts/sec passively', cost: 200,   pps: 5   },
+  { id: 'auto2', name: 'Scout Team',   desc: '+20 pts/sec passively', cost: 1500,  pps: 20  },
+  { id: 'auto3', name: 'Film Room',    desc: '+80 pts/sec passively', cost: 8000,  pps: 80  },
+  { id: 'auto4', name: 'Recruit Camp', desc: '+300 pts/sec passively', cost: 40000, pps: 300 },
+  { id: 'auto5', name: 'Dynasty Mode', desc: '+1500 pts/sec passively', cost: 250000, pps: 1500 },
 ];
 
 /* ══════════════════════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════════════════════ */
 const State = (() => {
-  const SAVE_KEY = 'byu_clicker_v1';
+  const SAVE_KEY = 'byu_clicker_v2';
+  const SAVE_KEY_V1 = 'byu_clicker_v1';
 
   const defaults = () => ({
     points: 0,
@@ -326,6 +593,8 @@ const State = (() => {
     prestigeLevel: 0,      // number of prestiges done
     clickCount: 0,         // session clicks
     prestigeMultiplier: 1, // 2^prestigeLevel
+    purchasedUpgrades: [], // auto-clicker upgrade ids
+    soundEnabled: true,    // sound on/off
   });
 
   let _state = defaults();
@@ -338,8 +607,10 @@ const State = (() => {
 
   const load = () => {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      // Try v2 first, then migrate v1
+      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(SAVE_KEY_V1);
       if (raw) _state = { ...defaults(), ...JSON.parse(raw) };
+      save(); // Persist as v2
     } catch {}
   };
 
@@ -354,6 +625,144 @@ const State = (() => {
 })();
 
 /* ══════════════════════════════════════════════════════════════
+   SOUND (Web Audio API — no external files)
+══════════════════════════════════════════════════════════════ */
+const Sound = (() => {
+  let _ctx = null;
+  const _ctx$ = () => {
+    if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return _ctx;
+  };
+
+  const _note = (freq, type, vol, start, dur) => {
+    try {
+      const ac = _ctx$();
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, start);
+      g.gain.setValueAtTime(vol, start);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      o.connect(g); g.connect(ac.destination);
+      o.start(start); o.stop(start + dur);
+    } catch (_) {}
+  };
+
+  const _play = (fn) => {
+    if (!State.get().soundEnabled) return;
+    fn();
+  };
+
+  const click = () => _play(() => {
+    const ac = _ctx$(); const t = ac.currentTime;
+    _note(700, 'sine', 0.25, t, 0.08);
+    _note(400, 'sine', 0.15, t + 0.04, 0.1);
+  });
+
+  const combo = (level) => _play(() => {
+    const ac = _ctx$(); const t = ac.currentTime;
+    const freq = Math.min(1200, 300 + level * 80);
+    _note(freq, 'sine', 0.2, t, 0.15);
+  });
+
+  const unlock = () => _play(() => {
+    const ac = _ctx$(); const t = ac.currentTime;
+    [523, 659, 784, 1047].forEach((f, i) => _note(f, 'sine', 0.28, t + i * 0.1, 0.25));
+  });
+
+  const prestige = () => _play(() => {
+    const ac = _ctx$(); const t = ac.currentTime;
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => _note(f, 'square', 0.18, t + i * 0.13, 0.35));
+  });
+
+  const toggle = () => {
+    const enabled = !State.get().soundEnabled;
+    State.update({ soundEnabled: enabled });
+    document.getElementById('sound-btn').textContent = enabled ? '🔊' : '🔇';
+  };
+
+  return { click, combo, unlock, prestige, toggle };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   PARTICLES
+══════════════════════════════════════════════════════════════ */
+const Particles = (() => {
+  const COLORS = ['#FFD700', '#0062B8', '#ffffff', '#FFB300', '#00e5ff'];
+  const spawn = (x, y, count = 8) => {
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.8;
+      const speed = 55 + Math.random() * 70;
+      const dx = Math.cos(angle) * speed;
+      const dy = Math.sin(angle) * speed;
+      const size = 4 + Math.random() * 5;
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      el.style.cssText = `position:fixed;pointer-events:none;z-index:9998;
+        left:${x}px;top:${y}px;width:${size}px;height:${size}px;
+        background:${color};border-radius:50%;
+        transform:translate(-50%,-50%);
+        transition:transform .65s ease-out,opacity .65s ease-out;`;
+      document.body.appendChild(el);
+      requestAnimationFrame(() => {
+        el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+        el.style.opacity = '0';
+      });
+      setTimeout(() => el.remove(), 750);
+    }
+  };
+  const flash = () => {
+    const el = document.createElement('div');
+    el.className = 'unlock-flash';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 700);
+  };
+  return { spawn, flash };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   COMBO TRACKER
+══════════════════════════════════════════════════════════════ */
+const Combo = (() => {
+  let _count = 0;
+  let _timer = null;
+  const RESET_MS = 2000; // idle time (ms) before combo count resets
+  // Click thresholds to reach each combo tier (index = tier level)
+  const LEVELS = [1, 3, 6, 10, 15, 20];
+
+  const level = () => {
+    for (let i = LEVELS.length - 1; i >= 0; i--) {
+      if (_count >= LEVELS[i]) return i;
+    }
+    return 0;
+  };
+  const multiplier = () => 1 + level() * 0.25;
+
+  const register = () => {
+    _count++;
+    clearTimeout(_timer);
+    _timer = setTimeout(() => { _count = 0; _updateDisplay(); }, RESET_MS);
+    _updateDisplay();
+    const lvl = level();
+    if (lvl > 0) Sound.combo(lvl);
+    return multiplier();
+  };
+
+  const _updateDisplay = () => {
+    const el = document.getElementById('combo-display');
+    if (!el) return;
+    const m = multiplier();
+    el.textContent = `x${m.toFixed(2)}`;
+    el.style.color = _count >= LEVELS[4] ? '#ff6600' : _count >= LEVELS[2] ? '#FFD700' : '#fdba74';
+    el.classList.remove('pop');
+    void el.offsetWidth; // Force browser reflow so removing+adding the class restarts the CSS animation
+    el.classList.add('pop');
+  };
+
+  return { register, multiplier };
+})();
+
+/* ══════════════════════════════════════════════════════════════
    UI HELPERS
 ══════════════════════════════════════════════════════════════ */
 const UI = (() => {
@@ -365,9 +774,14 @@ const UI = (() => {
     const s = State.get();
     const pts = Math.floor(s.points);
     const ppc = currentPPC();
+    const pps = currentPPS();
     $('hud-points').textContent = pts.toLocaleString();
     $('hud-ppc').textContent    = ppc;
     $('hud-prestige').textContent = `×${s.prestigeMultiplier}`;
+    $('hud-pps').textContent    = pps.toLocaleString();
+    // Sound button
+    const sb = $('sound-btn');
+    if (sb) sb.textContent = s.soundEnabled ? '🔊' : '🔇';
   };
 
   /* ── Jersey ── */
@@ -391,6 +805,7 @@ const UI = (() => {
       $('active-name').textContent  = legend.name;
       $('active-title').textContent = legend.title;
       $('active-legend-info').classList.remove('hidden');
+      $('jersey-svg').classList.add('has-legend');
       // Update aria-label to reflect current PPC and active legend
       const ppc = currentPPC();
       $('jersey-btn').setAttribute('aria-label',
@@ -400,32 +815,37 @@ const UI = (() => {
       numEl.setAttribute('fill', 'white');
       numEl.setAttribute('stroke', '#0062B8');
       $('active-legend-info').classList.add('hidden');
+      $('jersey-svg').classList.remove('has-legend');
       $('jersey-btn').setAttribute('aria-label', 'Click to earn Cougar Points');
     }
   };
 
   /* ── Gallery (sidebar + panel) ── */
+  const TIER_LABELS = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'💠', legendary:'🌟' };
+
   const renderCard = (legend, compact = false) => {
     const s = State.get();
     const unlocked = s.unlockedIds.includes(legend.id);
     const canAfford = s.points >= legend.cost;
     const isActive  = s.activeId === legend.id;
+    const tierClass = legend.tier ? `tier-${legend.tier}` : '';
+    const tierIcon  = legend.tier ? (TIER_LABELS[legend.tier] || '') : '';
 
     if (compact) {
       // Sidebar compact card
       return `
-        <div class="legend-card rounded-lg border ${unlocked ? 'border-byu-blue bg-byu-navy/60' : 'border-white/10 bg-black/30 opacity-50'}
-             p-3 mb-3 flex items-center gap-3">
+        <div class="legend-card rounded-lg border ${unlocked ? `border-byu-blue ${tierClass}` : 'border-white/10 bg-black/30 opacity-50'}
+             bg-byu-navy/60 p-3 mb-3 flex items-center gap-3">
           <div class="w-12 h-14 flex-shrink-0 flex items-center justify-center rounded"
                style="background:${legend.jerseyFill};border:2px solid ${legend.jerseyStroke}">
             <span class="font-varsity text-xl" style="color:${legend.accentColor}">${unlocked ? legend.number : '?'}</span>
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-varsity text-sm leading-tight ${unlocked ? 'text-white' : 'text-white/40'} truncate">
-              ${unlocked ? legend.name : '???'}
+              ${unlocked ? `${tierIcon} ${legend.name}` : '???'}
             </div>
             <div class="text-xs ${unlocked ? 'text-yellow-300' : 'text-white/30'}">${unlocked ? legend.title : `🔒 ${legend.cost.toLocaleString()} pts`}</div>
-            ${unlocked ? `<div class="text-xs text-white/50">+${legend.ppc} PPC</div>` : ''}
+            ${unlocked ? `<div class="text-xs text-white/50">+${legend.ppc} PPC${legend.pps ? ` · +${legend.pps}/s` : ''}</div>` : ''}
           </div>
           ${unlocked && isActive ? '<span class="text-yellow-300 text-xs font-bold">▶ ACTIVE</span>' : ''}
         </div>`;
@@ -434,14 +854,14 @@ const UI = (() => {
     // Full panel card
     const prog = unlocked ? 100 : Math.min(100, Math.floor((s.points / legend.cost) * 100));
     return `
-      <div class="legend-card rounded-xl border ${unlocked ? 'border-byu-blue' : 'border-white/10'} bg-byu-navy/70 p-4 mb-4 shadow-lg">
+      <div class="legend-card rounded-xl border ${unlocked ? `border-byu-blue ${tierClass}` : 'border-white/10'} bg-byu-navy/70 p-4 mb-4 shadow-lg">
         <div class="flex items-center gap-3 mb-2">
           <div class="w-14 h-16 flex-shrink-0 flex items-center justify-center rounded-lg"
                style="background:${legend.jerseyFill};border:2px solid ${legend.jerseyStroke}">
             <span class="font-varsity text-2xl" style="color:${legend.accentColor}">${unlocked ? legend.number : '?'}</span>
           </div>
           <div>
-            <div class="font-varsity text-lg ${unlocked ? 'text-white' : 'text-white/40'}">${unlocked ? legend.name : '???'}</div>
+            <div class="font-varsity text-lg ${unlocked ? 'text-white' : 'text-white/40'}">${unlocked ? `${tierIcon} ${legend.name}` : '???'}</div>
             <div class="text-xs italic ${unlocked ? 'text-yellow-300' : 'text-white/30'}">${unlocked ? legend.title : 'Locked'}</div>
             <div class="text-xs text-white/50 mt-1">Cost: <span class="text-yellow-200">${legend.cost.toLocaleString()} pts</span></div>
           </div>
@@ -467,6 +887,7 @@ const UI = (() => {
         >
           ${unlocked ? (isActive ? '▶ ACTIVE' : 'ACTIVATE') : `UNLOCK — ${legend.cost.toLocaleString()} PTS`}
         </button>
+        ${unlocked && legend.pps ? `<div class="text-xs text-cyan-300 text-center mt-1">+${legend.ppc} PPC · +${legend.pps} pts/sec</div>` : unlocked ? `<div class="text-xs text-white/40 text-center mt-1">+${legend.ppc} Points Per Click</div>` : ''}
       </div>`;
   };
 
@@ -520,6 +941,7 @@ const UI = (() => {
   /* ── Stats panel ── */
   const renderStats = () => {
     const s = State.get();
+    const pps = currentPPS();
     $('panel-stats').innerHTML = `
       <div class="rounded-xl border border-byu-blue bg-byu-navy/70 p-4 shadow-lg space-y-3">
         <h3 class="font-varsity text-xl tracking-wide border-b border-white/20 pb-2">GAME STATS</h3>
@@ -547,6 +969,14 @@ const UI = (() => {
           <div class="bg-white/10 rounded p-2">
             <div class="font-varsity text-2xl text-yellow-300">×${s.prestigeMultiplier}</div>
             <div class="text-xs text-white/60">Point Multiplier</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-cyan-300">${pps.toLocaleString()}</div>
+            <div class="text-xs text-white/60">Points / Sec</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-cyan-300">${(s.purchasedUpgrades||[]).length} / ${UPGRADES.length}</div>
+            <div class="text-xs text-white/60">Upgrades Owned</div>
           </div>
         </div>
         ${s.prestigeLevel > 0 ? `<p class="text-yellow-300 text-xs text-center italic">🏆 ${s.prestigeLevel}× Prestige Legend!</p>` : ''}
@@ -578,11 +1008,40 @@ const UI = (() => {
 
   /* ── Tab switching ── */
   const showTab = (tab) => {
-    ['gallery', 'collection', 'stats'].forEach(t => {
+    ['gallery', 'upgrades', 'collection', 'stats'].forEach(t => {
       document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
       document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
     });
-    if (tab === 'stats') renderStats();
+    if (tab === 'stats')    renderStats();
+    if (tab === 'upgrades') renderUpgrades();
+  };
+
+  /* ── Upgrades panel ── */
+  const renderUpgrades = () => {
+    const s = State.get();
+    const panel = $('panel-upgrades');
+    panel.innerHTML = `
+      <p class="text-white/50 text-xs italic mb-3 text-center">Auto-clickers earn points every second, even while idle!</p>
+      ${UPGRADES.map(u => {
+        const owned   = (s.purchasedUpgrades || []).includes(u.id);
+        const canBuy  = !owned && s.points >= u.cost;
+        return `
+          <div class="upgrade-card rounded-xl border ${owned ? 'border-cyan-400 bg-cyan-900/20' : 'border-white/10 bg-byu-navy/70'} p-4 mb-3 shadow-lg">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <div class="font-varsity text-lg ${owned ? 'text-cyan-300' : 'text-white'}">${owned ? '✅ ' : ''}${u.name}</div>
+                <div class="text-xs text-white/60">${u.desc}</div>
+                ${owned ? '' : `<div class="text-xs text-yellow-200 mt-1">Cost: ${u.cost.toLocaleString()} pts</div>`}
+              </div>
+              <button onclick="Game.buyUpgrade('${u.id}')"
+                class="font-varsity text-sm px-4 py-2 rounded transition
+                       ${owned ? 'bg-white/10 text-white/30 cursor-default' : canBuy ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed'}"
+                ${owned || !canBuy ? 'disabled' : ''}>
+                ${owned ? 'OWNED' : 'BUY'}
+              </button>
+            </div>
+          </div>`;
+      }).join('')}`;
   };
 
   /* ── Float-up label ── */
@@ -605,7 +1064,7 @@ const UI = (() => {
     updatePrestigeBtn();
   };
 
-  return { refresh, updateHUD, updateNextUnlock, updatePrestigeBtn, renderStats, showTab, spawnFloat };
+  return { refresh, updateHUD, updateNextUnlock, updatePrestigeBtn, renderStats, renderUpgrades, showTab, spawnFloat };
 })();
 
 /* ══════════════════════════════════════════════════════════════
@@ -618,6 +1077,19 @@ function currentPPC() {
   return base * s.prestigeMultiplier;
 }
 
+function currentPPS() {
+  const s = State.get();
+  const legendPps = s.unlockedIds.reduce((sum, id) => {
+    const l = LEGENDS.find(lg => lg.id === id);
+    return sum + (l ? (l.pps || 0) : 0);
+  }, 0);
+  const upgradePps = (s.purchasedUpgrades || []).reduce((sum, uid) => {
+    const u = UPGRADES.find(u => u.id === uid);
+    return sum + (u ? u.pps : 0);
+  }, 0);
+  return (legendPps + upgradePps) * s.prestigeMultiplier;
+}
+
 /* ══════════════════════════════════════════════════════════════
    GAME CONTROLLER
 ══════════════════════════════════════════════════════════════ */
@@ -626,13 +1098,16 @@ const Game = (() => {
   const handleClick = (event) => {
     const s   = State.get();
     const ppc = currentPPC();
-    const newPoints = s.points + ppc;
+    const comboMult = Combo.register();
+    const earned = Math.ceil(ppc * comboMult);
 
     State.update({
-      points:      newPoints,
-      totalPoints: s.totalPoints + ppc,
+      points:      s.points + earned,
+      totalPoints: s.totalPoints + earned,
       clickCount:  s.clickCount + 1,
     });
+
+    Sound.click();
 
     // Get click coordinates for the float label
     let cx, cy;
@@ -648,7 +1123,9 @@ const Game = (() => {
       cx = rect.left + rect.width / 2;
       cy = rect.top + rect.height / 2;
     }
-    UI.spawnFloat(cx, cy, `+${ppc}`);
+    const label = comboMult > 1 ? `+${earned} ×${comboMult.toFixed(2)}` : `+${earned}`;
+    UI.spawnFloat(cx, cy, label);
+    Particles.spawn(cx, cy, comboMult >= 1.5 ? 12 : 7);
 
     UI.updateHUD();
     UI.updateNextUnlock();
@@ -668,6 +1145,8 @@ const Game = (() => {
     const newUnlocked = [...s.unlockedIds, legend.id];
     State.update({ unlockedIds: newUnlocked });
     _showUnlockToast(legend);
+    Sound.unlock();
+    Particles.flash();
     // Auto-activate the highest-tier unlocked legend
     State.update({ activeId: legend.id });
     UI.refresh();
@@ -701,13 +1180,28 @@ const Game = (() => {
     const legend = LEGENDS.find(l => l.id === id);
     if (s.points < legend.cost) return; // not enough
     const newUnlocked = [...s.unlockedIds, legend.id];
-    // Points are milestones — no deduction needed, but deduct for feel
     State.update({
       unlockedIds: newUnlocked,
       activeId: id,
     });
     _showUnlockToast(legend);
+    Sound.unlock();
+    Particles.flash();
     UI.refresh();
+  };
+
+  const buyUpgrade = (uid) => {
+    const s = State.get();
+    const u = UPGRADES.find(u => u.id === uid);
+    if (!u || (s.purchasedUpgrades || []).includes(uid)) return;
+    if (s.points < u.cost) return;
+    State.update({
+      points: s.points - u.cost,
+      purchasedUpgrades: [...(s.purchasedUpgrades || []), uid],
+    });
+    Sound.unlock();
+    UI.refresh();
+    UI.renderUpgrades();
   };
 
   const prestige = () => {
@@ -728,7 +1222,9 @@ const Game = (() => {
       activeId:           null,
       prestigeLevel:      newLevel,
       prestigeMultiplier: newMult,
+      purchasedUpgrades:  [],
     });
+    Sound.prestige();
     UI.refresh();
 
     // Celebrate
@@ -756,9 +1252,41 @@ const Game = (() => {
       e.preventDefault();
       Game.handleClick(e);
     }, { passive: false });
+
+    // Passive income tick (every second)
+    setInterval(() => {
+      const pps = currentPPS();
+      if (pps <= 0) return;
+      const s = State.get();
+      State.update({
+        points:      s.points + pps,
+        totalPoints: s.totalPoints + pps,
+      });
+      UI.updateHUD();
+      UI.updateNextUnlock();
+      // Floating auto-tick indicator (subtle, near jersey)
+      const jerseyEl = document.getElementById('jersey-btn');
+      if (jerseyEl) {
+        const rect = jerseyEl.getBoundingClientRect();
+        const el = document.createElement('div');
+        el.className = 'auto-tick';
+        el.textContent = `+${pps}/s`;
+        el.style.left = `${rect.left + rect.width / 2 + (Math.random() - 0.5) * 60}px`;
+        el.style.top  = `${rect.top + 20}px`;
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+      // Auto-check unlocks
+      const sAfter = State.get();
+      LEGENDS.forEach(l => {
+        if (!sAfter.unlockedIds.includes(l.id) && sAfter.points >= l.cost) {
+          _tryAutoUnlock(l);
+        }
+      });
+    }, 1000);
   };
 
-  return { handleClick, unlockOrActivate, prestige, showTab, init };
+  return { handleClick, unlockOrActivate, buyUpgrade, prestige, showTab, init };
 })();
 
 /* ══════════════════════════════════════════════════════════════
