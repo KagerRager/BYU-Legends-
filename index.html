@@ -250,7 +250,7 @@
       aria-label="Click to earn Cougar Points"
       class="relative flex flex-col items-center select-none"
       onclick="Game.handleClick(event)"
-      onkeydown="if(event.key==='Enter'||event.key===' ') Game.handleClick(event)"
+      onkeydown="if((event.key==='Enter'||event.key===' ')&&!event.repeat) Game.handleClick(event)"
       tabindex="0"
     >
       <!-- Jersey SVG – updated dynamically by JS -->
@@ -1611,7 +1611,7 @@ const Game = (() => {
 
     // Global keyboard shortcut: Space anywhere to click jersey
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A'].includes(e.target.tagName)) {
+      if (e.code === 'Space' && !e.repeat && !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A'].includes(e.target.tagName)) {
         e.preventDefault();
         handleClick({ clientX: 0, clientY: 0 });
       }
