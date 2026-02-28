@@ -264,6 +264,10 @@
           <filter id="jersey-drop-shadow" x="-8%" y="-4%" width="116%" height="116%">
             <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/>
           </filter>
+          <!-- Fabric mesh texture (perforated athletic jersey look) -->
+          <pattern id="jersey-mesh-pat" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
+            <circle cx="2.5" cy="2.5" r="0.75" fill="rgba(255,255,255,0.065)"/>
+          </pattern>
         </defs>
         <g id="jersey-body" filter="url(#jersey-drop-shadow)">
           <!-- Main body -->
@@ -288,10 +292,35 @@
           <path d="M200 60 L220 112 L188 118 L155 38 Z" fill="rgba(255,255,255,0.07)" stroke="none"/>
           <!-- Collar shadow depth -->
           <path id="jersey-collar-fill"
-                d="M88 39 Q110 63 132 39 Q110 60 88 39 Z" fill="#001020" opacity="0.7"/>
+                d="M87 38 Q110 66 133 38 Q120 51 110 56 Q100 51 87 38 Z" fill="#001020" opacity="0.88"/>
+          <!-- Collar rim shadow for depth -->
+          <path d="M87 39 Q110 65 133 39" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="2.5" stroke-linecap="round"/>
           <!-- Collar outline -->
           <path id="jersey-collar"
-                d="M85 38 Q110 66 135 38" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
+                d="M85 38 Q110 67 135 38" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+          <!-- Collar stitching line -->
+          <path d="M89 42 Q110 63 131 42" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.8" stroke-dasharray="2.5,2" stroke-linecap="round"/>
+          <!-- Fabric mesh texture overlay on entire jersey body -->
+          <path d="M20 60 L0 112 L32 118 L32 252 L188 252 L188 118 L220 112 L200 60 L155 38 C145 80 75 80 65 38 Z"
+                fill="url(#jersey-mesh-pat)" stroke="none" pointer-events="none"/>
+          <!-- Shoulder seam stitching left -->
+          <path d="M21 62 L33 119" stroke="rgba(255,255,255,0.16)" stroke-width="0.9" stroke-dasharray="3,3" fill="none"/>
+          <!-- Shoulder seam stitching right -->
+          <path d="M199 62 L187 119" stroke="rgba(255,255,255,0.16)" stroke-width="0.9" stroke-dasharray="3,3" fill="none"/>
+          <!-- Bottom hem double stitch -->
+          <path d="M35 249 L185 249" stroke="rgba(255,255,255,0.16)" stroke-width="0.8" stroke-dasharray="4,3" fill="none"/>
+          <path d="M37 245 L183 245" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="4,3" fill="none"/>
+          <!-- Sleeve hem stitching -->
+          <path d="M1 110 L31 110" stroke="rgba(255,255,255,0.16)" stroke-width="0.8" stroke-dasharray="2,2" fill="none"/>
+          <path d="M189 110 L219 110" stroke="rgba(255,255,255,0.16)" stroke-width="0.8" stroke-dasharray="2,2" fill="none"/>
+          <!-- Side stripe inner shadow lines for 3D depth -->
+          <path d="M56 118 L56 252" stroke="rgba(0,0,0,0.22)" stroke-width="1.2" fill="none"/>
+          <path d="M164 118 L164 252" stroke="rgba(0,0,0,0.22)" stroke-width="1.2" fill="none"/>
+          <!-- Chest panel highlight (subtle 3D effect) -->
+          <path d="M67 44 C77 78 100 87 110 90 C120 87 143 78 153 44"
+                fill="none" stroke="rgba(255,255,255,0.045)" stroke-width="9" stroke-linecap="round"/>
+          <!-- Lower body shadow panel -->
+          <path d="M32 200 L32 252 L188 252 L188 200 Z" fill="rgba(0,0,0,0.1)" stroke="none"/>
         </g>
         <!-- Jersey number (dynamic) -->
         <text id="jersey-number" x="110" y="177" text-anchor="middle"
@@ -353,6 +382,8 @@
                 onclick="Game.showTab('stats')" id="tab-stats">STATS</button>
         <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
                 onclick="Game.showTab('customize')" id="tab-customize">🎨</button>
+        <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
+                onclick="Game.showTab('minigames')" id="tab-minigames">🎮</button>
       </div>
 
       <!-- Gallery panel -->
@@ -369,6 +400,9 @@
 
       <!-- Customize panel (hidden by default) -->
       <div id="panel-customize" class="hidden"></div>
+
+      <!-- Mini Games panel (hidden by default) -->
+      <div id="panel-minigames" class="hidden"></div>
     </div>
 
   </main>
@@ -1118,13 +1152,14 @@ const UI = (() => {
 
   /* ── Tab switching ── */
   const showTab = (tab) => {
-    ['gallery', 'upgrades', 'collection', 'stats', 'customize'].forEach(t => {
+    ['gallery', 'upgrades', 'collection', 'stats', 'customize', 'minigames'].forEach(t => {
       document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
       document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
     });
-    if (tab === 'stats')     renderStats();
-    if (tab === 'upgrades')  renderUpgrades();
-    if (tab === 'customize') renderCustomize();
+    if (tab === 'stats')      renderStats();
+    if (tab === 'upgrades')   renderUpgrades();
+    if (tab === 'customize')  renderCustomize();
+    if (tab === 'minigames')  MiniGames.render();
   };
 
   /* ── Jersey Customizer panel ── */
@@ -1475,6 +1510,189 @@ const Game = (() => {
   };
 
   return { handleClick, unlockOrActivate, buyUpgrade, prestige, showTab, setJerseyColor, init };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   MINI GAMES
+══════════════════════════════════════════════════════════════ */
+const MiniGames = (() => {
+  // Difficulty scaling constants
+  const FG_BASE_SPEED   = 1.5,  FG_MAX_SPEED   = 3.5,  FG_SPEED_INC   = 0.15;
+  const FT_BASE_SPEED   = 1.2,  FT_MAX_SPEED   = 3.2,  FT_SPEED_INC   = 0.12;
+  // Scoring thresholds (distance from center 0–50; smaller = tighter sweet spot)
+  const PERFECT_DIST = 8, GOOD_DIST = 22;
+  // Bonus Cougar Points awarded per outcome
+  const FG_BONUS_PERFECT = 150, FG_BONUS_GOOD = 30;
+  const FT_BONUS_PERFECT = 100, FT_BONUS_GOOD = 25;
+
+  const _st = {
+    fg: { active: false, val: 0, dir: 1, speed: 1.5, animId: null, wins: 0, total: 0 },
+    ft: { active: false, val: 0, dir: 1, speed: 1.2, animId: null, wins: 0, total: 0 },
+  };
+
+  /* ── Field Goal Kick ── */
+  const _fgTick = () => {
+    const g = _st.fg;
+    g.val += g.dir * g.speed;
+    if (g.val >= 100) { g.val = 100; g.dir = -1; }
+    if (g.val <= 0)   { g.val = 0;   g.dir =  1; }
+    const el = document.getElementById('mg-fg-ind');
+    if (el) el.style.left = `${g.val}%`;
+    g.animId = requestAnimationFrame(_fgTick);
+  };
+
+  const kickFG = () => {
+    const g = _st.fg;
+    if (!g.active) {
+      g.active = true; g.val = 0; g.dir = 1;
+      g.speed = Math.min(FG_MAX_SPEED, FG_BASE_SPEED + g.total * FG_SPEED_INC);
+      const btn = document.getElementById('mg-fg-btn');
+      if (btn) btn.textContent = '⚡ KICK!';
+      const res = document.getElementById('mg-fg-res');
+      if (res) res.textContent = '';
+      _fgTick();
+      return;
+    }
+    cancelAnimationFrame(g.animId);
+    g.active = false;
+    g.total++;
+    const dist = Math.abs(g.val - 50);
+    let msg, bonus;
+    if (dist <= PERFECT_DIST) { msg = '✅ GOOD — 3 pts!'; bonus = FG_BONUS_PERFECT; g.wins++; Sound.unlock(); }
+    else if (dist <= GOOD_DIST) { msg = '⚠️ Wide — 1 pt';   bonus = FG_BONUS_GOOD;           Sound.click();  }
+    else                        { msg = '❌ No Good!';        bonus = 0; }
+    if (bonus > 0) {
+      const s = State.get();
+      State.update({ points: s.points + bonus, totalPoints: s.totalPoints + bonus });
+      UI.updateHUD();
+    }
+    const res = document.getElementById('mg-fg-res');
+    if (res) res.textContent = msg + (bonus ? ` +${bonus} Cougar Pts` : '');
+    const score = document.getElementById('mg-fg-score');
+    if (score) score.textContent = `${g.wins}/${g.total}`;
+    const btn = document.getElementById('mg-fg-btn');
+    if (btn) btn.textContent = '▶ TRY Again';
+  };
+
+  /* ── Free Throw ── */
+  const _ftTick = () => {
+    const g = _st.ft;
+    g.val += g.dir * g.speed;
+    if (g.val >= 100) { g.val = 100; g.dir = -1; }
+    if (g.val <= 0)   { g.val = 0;   g.dir =  1; }
+    const el = document.getElementById('mg-ft-ind');
+    if (el) el.style.left = `${g.val}%`;
+    g.animId = requestAnimationFrame(_ftTick);
+  };
+
+  const shootFT = () => {
+    const g = _st.ft;
+    if (!g.active) {
+      g.active = true; g.val = 0; g.dir = 1;
+      g.speed = Math.min(FT_MAX_SPEED, FT_BASE_SPEED + g.total * FT_SPEED_INC);
+      const btn = document.getElementById('mg-ft-btn');
+      if (btn) btn.textContent = '🏀 SHOOT!';
+      const res = document.getElementById('mg-ft-res');
+      if (res) res.textContent = '';
+      _ftTick();
+      return;
+    }
+    cancelAnimationFrame(g.animId);
+    g.active = false;
+    g.total++;
+    const dist = Math.abs(g.val - 50);
+    let msg, bonus;
+    if (dist <= PERFECT_DIST) { msg = '🎯 SWISH! +2 pts!';  bonus = FT_BONUS_PERFECT; g.wins++; Sound.unlock(); }
+    else if (dist <= GOOD_DIST) { msg = '😅 Rolls in — 1 pt'; bonus = FT_BONUS_GOOD;           Sound.click();  }
+    else                        { msg = '❌ Brick!';            bonus = 0; }
+    if (bonus > 0) {
+      const s = State.get();
+      State.update({ points: s.points + bonus, totalPoints: s.totalPoints + bonus });
+      UI.updateHUD();
+    }
+    const res = document.getElementById('mg-ft-res');
+    if (res) res.textContent = msg + (bonus ? ` +${bonus} Cougar Pts` : '');
+    const score = document.getElementById('mg-ft-score');
+    if (score) score.textContent = `${g.wins}/${g.total}`;
+    const btn = document.getElementById('mg-ft-btn');
+    if (btn) btn.textContent = '▶ Try Again';
+  };
+
+  const render = () => {
+    const panel = document.getElementById('panel-minigames');
+    if (!panel) return;
+    const fg = _st.fg, ft = _st.ft;
+    const fgBtnText = fg.active ? '⚡ KICK!' : (fg.total > 0 ? '▶ Try Again' : '▶ START KICK');
+    const ftBtnText = ft.active ? '🏀 SHOOT!' : (ft.total > 0 ? '▶ Try Again' : '▶ START SHOOTING');
+    panel.innerHTML = `
+      <div class="space-y-4">
+        <p class="text-white/50 text-xs italic text-center">Play mini games to earn bonus Cougar Points!</p>
+
+        <!-- Field Goal Kick -->
+        <div class="rounded-xl border border-byu-blue bg-byu-navy/70 p-4 shadow-lg">
+          <h3 class="font-varsity text-xl tracking-wide border-b border-white/20 pb-2 mb-3">🏈 FIELD GOAL KICK</h3>
+          <div class="flex justify-center mb-3">
+            <svg width="110" height="72" viewBox="0 0 110 72" aria-label="Goal posts">
+              <rect x="0" y="66" width="110" height="5" fill="#2d5a27" rx="1"/>
+              <rect x="38" y="8" width="4" height="58" fill="#FFD700"/>
+              <rect x="68" y="8" width="4" height="58" fill="#FFD700"/>
+              <rect x="34" y="30" width="42" height="4" fill="#FFD700"/>
+              <rect x="52" y="34" width="6" height="32" fill="#C8A800"/>
+              <rect x="42" y="10" width="26" height="18" fill="rgba(0,200,80,0.14)" rx="1"/>
+              <text x="55" y="23" text-anchor="middle" font-size="8" fill="rgba(0,220,80,0.7)" font-family="monospace">GOOD</text>
+            </svg>
+          </div>
+          <p class="text-xs text-white/50 text-center mb-2">Click <strong class="text-white/70">START KICK</strong> then click again to kick — land in the green zone!</p>
+          <div class="relative h-7 bg-white/10 rounded-full overflow-hidden mb-3 select-none">
+            <div class="absolute top-0 bottom-0 rounded" style="left:35%;width:30%;background:rgba(0,200,80,0.28)"></div>
+            <div id="mg-fg-ind" class="absolute top-1 bottom-1 w-2.5 bg-yellow-400 rounded-full shadow" style="left:0%;transform:translateX(-50%);transition:none"></div>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <button id="mg-fg-btn" onclick="MiniGames.kickFG()"
+              class="flex-1 py-2 rounded font-varsity text-sm tracking-wide bg-byu-blue hover:bg-blue-400 text-white transition">
+              ${fgBtnText}
+            </button>
+            <span class="text-xs text-white/50 whitespace-nowrap">Score: <span id="mg-fg-score" class="text-yellow-300 font-bold">${fg.wins}/${fg.total}</span></span>
+          </div>
+          <div id="mg-fg-res" class="text-center font-varsity text-base text-yellow-300 min-h-[1.4rem]"></div>
+        </div>
+
+        <!-- Free Throw -->
+        <div class="rounded-xl border border-orange-500/40 bg-byu-navy/70 p-4 shadow-lg">
+          <h3 class="font-varsity text-xl tracking-wide border-b border-white/20 pb-2 mb-3">🏀 FREE THROW</h3>
+          <div class="flex justify-center mb-3">
+            <svg width="110" height="72" viewBox="0 0 110 72" aria-label="Basketball hoop">
+              <rect x="0" y="67" width="110" height="4" fill="#8B6914" rx="1"/>
+              <rect x="74" y="6" width="28" height="20" fill="none" stroke="#999" stroke-width="2" rx="1"/>
+              <rect x="64" y="22" width="12" height="3" fill="#999"/>
+              <ellipse cx="55" cy="30" rx="17" ry="4" fill="none" stroke="#FF6B00" stroke-width="3"/>
+              <path d="M38 30 Q40 48 55 53 Q70 48 72 30" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <circle cx="18" cy="56" r="9" fill="#FF6B00"/>
+              <path d="M18 47 Q24 52 18 65" stroke="#000" stroke-width="1" fill="none"/>
+              <path d="M9 56 Q14 50 27 56" stroke="#000" stroke-width="1" fill="none"/>
+            </svg>
+          </div>
+          <p class="text-xs text-white/50 text-center mb-2">Click <strong class="text-white/70">START SHOOTING</strong> then click again — hit the sweet spot for a swish!</p>
+          <div class="relative h-7 bg-white/10 rounded-full overflow-hidden mb-3 select-none">
+            <div class="absolute top-0 bottom-0 rounded" style="left:35%;width:30%;background:rgba(255,107,0,0.28)"></div>
+            <div id="mg-ft-ind" class="absolute top-1 bottom-1 w-2.5 bg-orange-400 rounded-full shadow" style="left:0%;transform:translateX(-50%);transition:none"></div>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <button id="mg-ft-btn" onclick="MiniGames.shootFT()"
+              class="flex-1 py-2 rounded font-varsity text-sm tracking-wide bg-orange-600 hover:bg-orange-500 text-white transition">
+              ${ftBtnText}
+            </button>
+            <span class="text-xs text-white/50 whitespace-nowrap">Score: <span id="mg-ft-score" class="text-orange-300 font-bold">${ft.wins}/${ft.total}</span></span>
+          </div>
+          <div id="mg-ft-res" class="text-center font-varsity text-base text-orange-300 min-h-[1.4rem]"></div>
+        </div>
+      </div>`;
+    // Restart animation loops if games were active when tab was re-opened
+    if (fg.active) { cancelAnimationFrame(fg.animId); _fgTick(); }
+    if (ft.active) { cancelAnimationFrame(ft.animId); _ftTick(); }
+  };
+
+  return { kickFG, shootFT, render };
 })();
 
 /* ══════════════════════════════════════════════════════════════
