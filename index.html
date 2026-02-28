@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYU Cougar Legend Clicker</title>
+
+  <!-- Google Fonts: Bebas Neue for varsity style -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'byu-navy': '#002E5D',
+              'byu-blue': '#0062B8',
+            },
+            fontFamily: {
+              varsity: ['"Bebas Neue"', 'Courier New', 'monospace'],
+              body: ['Roboto', 'sans-serif'],
+            },
+          },
+        },
+      };
+    }
+  </script>
+
+  <style>
+    /* ── Base reset / global ───────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Roboto', sans-serif; }
+
+    /* ── Float-up click animation ───────────────────── */
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-80px) scale(1.4); }
+    }
+    .float-label {
+      position: fixed;
+      pointer-events: none;
+      font-family: 'Bebas Neue', monospace;
+      font-size: 2rem;
+      color: #FFD700;
+      text-shadow: 0 2px 6px rgba(0,0,0,.6);
+      animation: floatUp .9s ease-out forwards;
+      z-index: 9999;
+    }
+
+    /* ── Jersey click zone ───────────────────────────── */
+    #jersey-btn {
+      cursor: pointer;
+      transition: transform .1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    #jersey-btn:active { transform: scale(.93); }
+
+    /* ── Legend card ─────────────────────────────────── */
+    .legend-card {
+      transition: box-shadow .2s, transform .2s;
+    }
+    .legend-card:hover {
+      box-shadow: 0 0 18px rgba(0,98,184,.7);
+      transform: translateY(-2px);
+    }
+
+    /* ── Tab button ──────────────────────────────────── */
+    .tab-btn.active {
+      background-color: #0062B8;
+      color: #fff;
+    }
+
+    /* ── Progress bar ────────────────────────────────── */
+    .prog-bar-inner {
+      transition: width .4s ease;
+      background: linear-gradient(90deg, #0062B8, #00a8ff);
+    }
+
+    /* ── Prestige glow ───────────────────────────────── */
+    @keyframes prestigePulse {
+      0%, 100% { box-shadow: 0 0 12px 4px #FFD700; }
+      50%       { box-shadow: 0 0 30px 12px #FFB300; }
+    }
+    .prestige-ready { animation: prestigePulse 1.5s ease-in-out infinite; }
+
+    /* ── Scrollbar (sidebar) ─────────────────────────── */
+    .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: #001a35; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #0062B8; border-radius: 3px; }
+
+    /* ── Mobile bottom-bar safe area ─────────────────── */
+    @media (max-width: 767px) {
+      #app { flex-direction: column; }
+    }
+
+    /* ── Tailwind utility fallback (in case CDN is unavailable) ── */
+    .hidden { display: none !important; }
+
+    /* ── Critical layout fallbacks when Tailwind CDN is unavailable ── */
+    @media (min-width: 768px) { .md\:flex { display: flex !important; } }
+  </style>
+</head>
+
+<body class="bg-byu-navy min-h-screen text-white font-body">
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOP HUD
+════════════════════════════════════════════════════════════ -->
+<header class="bg-byu-blue border-b-4 border-white sticky top-0 z-50 shadow-lg">
+  <div class="max-w-6xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+    <!-- Title -->
+    <h1 class="font-varsity text-3xl sm:text-4xl tracking-widest text-white drop-shadow">
+      🏈 BYU COUGAR LEGEND CLICKER
+    </h1>
+
+    <!-- Points & PPC -->
+    <div class="flex gap-4 items-center">
+      <div class="text-center">
+        <div id="hud-points" class="font-varsity text-3xl text-yellow-300 leading-none">0</div>
+        <div class="text-xs uppercase tracking-widest opacity-75">Cougar Points</div>
+      </div>
+      <div class="text-center">
+        <div id="hud-ppc" class="font-varsity text-3xl text-white leading-none">1</div>
+        <div class="text-xs uppercase tracking-widest opacity-75">Pts / Click</div>
+      </div>
+      <div class="text-center" id="hud-prestige-wrap">
+        <div id="hud-prestige" class="font-varsity text-3xl text-yellow-300 leading-none">×1</div>
+        <div class="text-xs uppercase tracking-widest opacity-75">Prestige</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════════════════════════════════ -->
+<div id="app" class="flex max-w-6xl mx-auto px-4 py-6 gap-6 min-h-[calc(100vh-72px)]">
+
+  <!-- ─── LEFT: Click Zone ───────────────────────────────── -->
+  <main class="flex-1 flex flex-col items-center gap-6">
+
+    <!-- Jersey Click Button -->
+    <section
+      id="jersey-btn"
+      role="button"
+      aria-label="Click to earn Cougar Points"
+      class="relative flex flex-col items-center select-none"
+      onclick="Game.handleClick(event)"
+      onkeydown="if(event.key==='Enter'||event.key===' ') Game.handleClick(event)"
+      tabindex="0"
+    >
+      <!-- Jersey SVG – replaced dynamically by JS -->
+      <svg id="jersey-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 260"
+           class="w-48 sm:w-64 md:w-72 drop-shadow-2xl">
+        <!-- Default: white jersey -->
+        <g id="jersey-body">
+          <!-- Shoulder base -->
+          <path d="M20 60 L0 110 L30 115 L30 240 L190 240 L190 115 L220 110 L200 60
+                   L155 40 C145 80 75 80 65 40 Z"
+                fill="#002E5D" stroke="#fff" stroke-width="3"/>
+          <!-- Collar -->
+          <path d="M85 40 Q110 70 135 40" fill="none" stroke="#fff" stroke-width="4"/>
+          <!-- Sleeve stripes -->
+          <rect x="0" y="107" width="30" height="5" fill="#0062B8"/>
+          <rect x="190" y="107" width="30" height="5" fill="#0062B8"/>
+        </g>
+        <!-- Jersey number (dynamic) -->
+        <text id="jersey-number" x="110" y="175" text-anchor="middle"
+              font-family="'Bebas Neue',monospace" font-size="72" font-weight="bold"
+              fill="white" stroke="#0062B8" stroke-width="3">?</text>
+        <!-- BYU wordmark -->
+        <text x="110" y="225" text-anchor="middle"
+              font-family="'Bebas Neue',monospace" font-size="22"
+              fill="#FFD700" letter-spacing="6">BYU</text>
+      </svg>
+
+      <p class="text-white/60 text-sm mt-2 animate-pulse">Tap the jersey to earn points!</p>
+    </section>
+
+    <!-- Active legend info -->
+    <div id="active-legend-info" class="text-center hidden">
+      <div id="active-name" class="font-varsity text-2xl text-yellow-300"></div>
+      <div id="active-title" class="text-sm text-white/70 italic"></div>
+    </div>
+
+    <!-- Prestige Button -->
+    <button
+      id="prestige-btn"
+      onclick="Game.prestige()"
+      class="hidden font-varsity text-xl px-8 py-3 rounded-lg bg-yellow-400 text-byu-navy
+             border-4 border-yellow-200 hover:bg-yellow-300 transition prestige-ready"
+      aria-label="Prestige - reset and double points"
+    >
+      ⭐ PRESTIGE — RESET &amp; DOUBLE POINTS ⭐
+    </button>
+
+    <!-- Next unlock progress -->
+    <div id="next-unlock-wrap" class="w-full max-w-sm">
+      <div class="flex justify-between text-xs text-white/60 mb-1">
+        <span id="next-unlock-label">Next: Gifford Nielsen</span>
+        <span id="next-unlock-pct">0%</span>
+      </div>
+      <div class="h-3 bg-white/10 rounded-full overflow-hidden">
+        <div id="next-unlock-bar" class="prog-bar-inner h-full rounded-full" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- ─── Tabs ─────────────────────────────────────────── -->
+    <div class="w-full max-w-sm">
+      <div class="flex gap-1 mb-3">
+        <button class="tab-btn active flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
+                onclick="Game.showTab('gallery')" id="tab-gallery">GALLERY</button>
+        <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
+                onclick="Game.showTab('collection')" id="tab-collection">COLLECTION</button>
+        <button class="tab-btn flex-1 py-2 rounded-t font-varsity tracking-wide text-sm border border-white/20"
+                onclick="Game.showTab('stats')" id="tab-stats">STATS</button>
+      </div>
+
+      <!-- Gallery panel -->
+      <div id="panel-gallery"></div>
+
+      <!-- Collection panel (hidden by default) -->
+      <div id="panel-collection" class="hidden"></div>
+
+      <!-- Stats panel (hidden by default) -->
+      <div id="panel-stats" class="hidden"></div>
+    </div>
+
+  </main>
+
+  <!-- ─── RIGHT: Legend Gallery sidebar (md+) ───────────── -->
+  <aside class="hidden md:flex flex-col w-72 gap-4 sidebar-scroll overflow-y-auto max-h-[calc(100vh-90px)]">
+    <h2 class="font-varsity text-2xl tracking-widest border-b border-white/20 pb-2">LEGEND GALLERY</h2>
+    <div id="sidebar-gallery"></div>
+  </aside>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     GAME SCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════════════════════ */
+const LEGENDS = [
+  {
+    id: 'nielsen',
+    name: 'Gifford Nielsen',
+    number: '14',
+    cost: 10,
+    ppc: 2,           // points per click when active
+    era: 'late-70s',
+    title: 'The Bridge Builder',
+    description: 'Two-time Western Athletic Conference MVP and the first BYU quarterback to earn national recognition, Nielsen was the bridge between BYU\'s early days and its dynasty era.',
+    stat1Label: 'WAC MVPs',  stat1: '2',
+    stat2Label: 'TD passes (career)', stat2: '51',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFFFFF',
+    accentColor: '#FFFFFF',
+  },
+  {
+    id: 'ainge',
+    name: 'Danny Ainge',
+    number: '22',
+    cost: 50,
+    ppc: 4,
+    era: 'early-80s',
+    title: 'The Multi-Sport Icon',
+    description: 'A two-sport All-American who played baseball for the Toronto Blue Jays while being BYU\'s starting quarterback, Ainge later became an NBA All-Star and championship-winning executive.',
+    stat1Label: 'Sports played professionally', stat1: '2',
+    stat2Label: 'NBA rings (as exec)', stat2: '2',
+    jerseyFill: '#001a3a',
+    jerseyStroke: '#0062B8',
+    accentColor: '#0062B8',
+  },
+  {
+    id: 'young',
+    name: 'Steve Young',
+    number: '8',
+    cost: 150,
+    ppc: 8,
+    era: 'mid-80s',
+    title: 'The Super Bowl MVP',
+    description: 'Finished his BYU career as the top-rated passer in NCAA history. Won Super Bowl XXIX MVP with the 49ers, throwing a record 6 TD passes, and was inducted into the Pro Football Hall of Fame.',
+    stat1Label: 'Super Bowl MVPs', stat1: '1',
+    stat2Label: 'Career QBR (NFL passer rating)', stat2: '96.8',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+  },
+  {
+    id: 'detmer',
+    name: 'Ty Detmer',
+    number: '14', // Both Nielsen and Detmer wore #14 — historically accurate for BYU's retired numbers
+    cost: 500,
+    ppc: 16,
+    era: 'early-90s',
+    title: 'The Heisman Trophy Winner',
+    description: 'Won the 1990 Heisman Trophy by the largest margin in history at the time, set 59 NCAA records, and led BYU to back-to-back WAC championships. His passing records stood for decades.',
+    stat1Label: 'NCAA records set', stat1: '59',
+    stat2Label: 'Heisman margin (pts)', stat2: 'Record',
+    jerseyFill: '#001020',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+  },
+];
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+const State = (() => {
+  const SAVE_KEY = 'byu_clicker_v1';
+
+  const defaults = () => ({
+    points: 0,
+    totalPoints: 0,        // all-time clicks (not reset on prestige)
+    unlockedIds: [],
+    activeId: null,
+    prestigeLevel: 0,      // number of prestiges done
+    clickCount: 0,         // session clicks
+    prestigeMultiplier: 1, // 2^prestigeLevel
+  });
+
+  let _state = defaults();
+
+  const save = () => {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(_state)); } catch (e) {
+      console.warn('BYU Clicker: could not save progress —', e.message);
+    }
+  };
+
+  const load = () => {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) _state = { ...defaults(), ...JSON.parse(raw) };
+    } catch {}
+  };
+
+  const get = () => _state;
+
+  const update = (patch) => {
+    Object.assign(_state, patch);
+    save();
+  };
+
+  return { get, update, load, save, defaults };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════════════════════ */
+const UI = (() => {
+
+  const $ = (id) => document.getElementById(id);
+
+  /* ── HUD ── */
+  const updateHUD = () => {
+    const s = State.get();
+    const pts = Math.floor(s.points);
+    const ppc = currentPPC();
+    $('hud-points').textContent = pts.toLocaleString();
+    $('hud-ppc').textContent    = ppc;
+    $('hud-prestige').textContent = `×${s.prestigeMultiplier}`;
+  };
+
+  /* ── Jersey ── */
+  const updateJersey = () => {
+    const s = State.get();
+    const legend = s.activeId ? LEGENDS.find(l => l.id === s.activeId) : null;
+
+    const numEl = $('jersey-number');
+    const bodyG  = $('jersey-body');
+
+    if (legend) {
+      numEl.textContent = legend.number;
+      numEl.setAttribute('fill', legend.accentColor);
+      numEl.setAttribute('stroke', legend.jerseyStroke);
+      bodyG.querySelectorAll('path, rect').forEach((el, i) => {
+        if (i === 0) el.setAttribute('fill', legend.jerseyFill);
+        if (i === 1) el.setAttribute('stroke', legend.jerseyStroke);
+        if (i === 2 || i === 3) el.setAttribute('fill', legend.jerseyStroke);
+      });
+      // Active legend label
+      $('active-name').textContent  = legend.name;
+      $('active-title').textContent = legend.title;
+      $('active-legend-info').classList.remove('hidden');
+      // Update aria-label to reflect current PPC and active legend
+      const ppc = currentPPC();
+      $('jersey-btn').setAttribute('aria-label',
+        `Click to earn +${ppc} Cougar Point${ppc !== 1 ? 's' : ''} — ${legend.name} active`);
+    } else {
+      numEl.textContent = '?';
+      numEl.setAttribute('fill', 'white');
+      numEl.setAttribute('stroke', '#0062B8');
+      $('active-legend-info').classList.add('hidden');
+      $('jersey-btn').setAttribute('aria-label', 'Click to earn Cougar Points');
+    }
+  };
+
+  /* ── Gallery (sidebar + panel) ── */
+  const renderCard = (legend, compact = false) => {
+    const s = State.get();
+    const unlocked = s.unlockedIds.includes(legend.id);
+    const canAfford = s.points >= legend.cost;
+    const isActive  = s.activeId === legend.id;
+
+    if (compact) {
+      // Sidebar compact card
+      return `
+        <div class="legend-card rounded-lg border ${unlocked ? 'border-byu-blue bg-byu-navy/60' : 'border-white/10 bg-black/30 opacity-50'}
+             p-3 mb-3 flex items-center gap-3">
+          <div class="w-12 h-14 flex-shrink-0 flex items-center justify-center rounded"
+               style="background:${legend.jerseyFill};border:2px solid ${legend.jerseyStroke}">
+            <span class="font-varsity text-xl" style="color:${legend.accentColor}">${unlocked ? legend.number : '?'}</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-varsity text-sm leading-tight ${unlocked ? 'text-white' : 'text-white/40'} truncate">
+              ${unlocked ? legend.name : '???'}
+            </div>
+            <div class="text-xs ${unlocked ? 'text-yellow-300' : 'text-white/30'}">${unlocked ? legend.title : `🔒 ${legend.cost.toLocaleString()} pts`}</div>
+            ${unlocked ? `<div class="text-xs text-white/50">+${legend.ppc} PPC</div>` : ''}
+          </div>
+          ${unlocked && isActive ? '<span class="text-yellow-300 text-xs font-bold">▶ ACTIVE</span>' : ''}
+        </div>`;
+    }
+
+    // Full panel card
+    const prog = unlocked ? 100 : Math.min(100, Math.floor((s.points / legend.cost) * 100));
+    return `
+      <div class="legend-card rounded-xl border ${unlocked ? 'border-byu-blue' : 'border-white/10'} bg-byu-navy/70 p-4 mb-4 shadow-lg">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-14 h-16 flex-shrink-0 flex items-center justify-center rounded-lg"
+               style="background:${legend.jerseyFill};border:2px solid ${legend.jerseyStroke}">
+            <span class="font-varsity text-2xl" style="color:${legend.accentColor}">${unlocked ? legend.number : '?'}</span>
+          </div>
+          <div>
+            <div class="font-varsity text-lg ${unlocked ? 'text-white' : 'text-white/40'}">${unlocked ? legend.name : '???'}</div>
+            <div class="text-xs italic ${unlocked ? 'text-yellow-300' : 'text-white/30'}">${unlocked ? legend.title : 'Locked'}</div>
+            <div class="text-xs text-white/50 mt-1">Cost: <span class="text-yellow-200">${legend.cost.toLocaleString()} pts</span></div>
+          </div>
+        </div>
+        <!-- Progress bar -->
+        ${!unlocked ? `
+        <div class="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+          <div class="prog-bar-inner h-full rounded-full" style="width:${prog}%"></div>
+        </div>
+        <div class="text-right text-xs text-white/40 mb-2">${prog}%</div>` : ''}
+        <!-- Unlock / Activate button -->
+        <button
+          onclick="Game.unlockOrActivate('${legend.id}')"
+          class="w-full py-2 rounded font-varsity text-sm tracking-wide transition
+                 ${unlocked
+                   ? isActive
+                     ? 'bg-yellow-400 text-byu-navy cursor-default'
+                     : 'bg-byu-blue hover:bg-blue-400 text-white'
+                   : canAfford
+                     ? 'bg-green-600 hover:bg-green-500 text-white'
+                     : 'bg-white/10 text-white/30 cursor-not-allowed'}"
+          ${!unlocked && !canAfford ? 'disabled' : ''}
+        >
+          ${unlocked ? (isActive ? '▶ ACTIVE' : 'ACTIVATE') : `UNLOCK — ${legend.cost.toLocaleString()} PTS`}
+        </button>
+      </div>`;
+  };
+
+  const renderGallery = () => {
+    const gallery    = $('panel-gallery');
+    const sidebar    = $('sidebar-gallery');
+    const collection = $('panel-collection');
+
+    // Gallery panel (unlock / activate)
+    gallery.innerHTML = LEGENDS.map(l => renderCard(l, false)).join('');
+
+    // Sidebar compact view
+    sidebar.innerHTML = LEGENDS.map(l => renderCard(l, true)).join('');
+
+    // Collection panel
+    const s = State.get();
+    if (s.unlockedIds.length === 0) {
+      collection.innerHTML = `<p class="text-white/40 italic text-sm text-center py-6">Unlock legends to view their stats here.</p>`;
+    } else {
+      collection.innerHTML = s.unlockedIds.map(id => {
+        const l = LEGENDS.find(lg => lg.id === id);
+        return `
+          <div class="rounded-xl border border-byu-blue bg-byu-navy/70 p-4 mb-4 shadow-lg">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-14 h-16 flex-shrink-0 flex items-center justify-center rounded-lg"
+                   style="background:${l.jerseyFill};border:2px solid ${l.jerseyStroke}">
+                <span class="font-varsity text-2xl" style="color:${l.accentColor}">${l.number}</span>
+              </div>
+              <div>
+                <div class="font-varsity text-lg text-white">${l.name}</div>
+                <div class="text-xs italic text-yellow-300">${l.title}</div>
+              </div>
+            </div>
+            <p class="text-white/70 text-xs mb-3 leading-relaxed">${l.description}</p>
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div class="bg-white/10 rounded p-2">
+                <div class="font-varsity text-xl text-yellow-300">${l.stat1}</div>
+                <div class="text-xs text-white/60">${l.stat1Label}</div>
+              </div>
+              <div class="bg-white/10 rounded p-2">
+                <div class="font-varsity text-xl text-yellow-300">${l.stat2}</div>
+                <div class="text-xs text-white/60">${l.stat2Label}</div>
+              </div>
+            </div>
+            <div class="mt-2 text-center text-xs text-white/50">+${l.ppc} Points Per Click</div>
+          </div>`;
+      }).join('');
+    }
+  };
+
+  /* ── Stats panel ── */
+  const renderStats = () => {
+    const s = State.get();
+    $('panel-stats').innerHTML = `
+      <div class="rounded-xl border border-byu-blue bg-byu-navy/70 p-4 shadow-lg space-y-3">
+        <h3 class="font-varsity text-xl tracking-wide border-b border-white/20 pb-2">GAME STATS</h3>
+        <div class="grid grid-cols-2 gap-2 text-center text-sm">
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">${Math.floor(s.points).toLocaleString()}</div>
+            <div class="text-xs text-white/60">Current Points</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">${Math.floor(s.totalPoints).toLocaleString()}</div>
+            <div class="text-xs text-white/60">All-Time Points</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">${s.clickCount.toLocaleString()}</div>
+            <div class="text-xs text-white/60">Total Clicks</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">${s.unlockedIds.length} / ${LEGENDS.length}</div>
+            <div class="text-xs text-white/60">Legends Unlocked</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">${s.prestigeLevel}</div>
+            <div class="text-xs text-white/60">Prestiges</div>
+          </div>
+          <div class="bg-white/10 rounded p-2">
+            <div class="font-varsity text-2xl text-yellow-300">×${s.prestigeMultiplier}</div>
+            <div class="text-xs text-white/60">Point Multiplier</div>
+          </div>
+        </div>
+        ${s.prestigeLevel > 0 ? `<p class="text-yellow-300 text-xs text-center italic">🏆 ${s.prestigeLevel}× Prestige Legend!</p>` : ''}
+      </div>`;
+  };
+
+  /* ── Next unlock progress ── */
+  const updateNextUnlock = () => {
+    const s   = State.get();
+    const next = LEGENDS.find(l => !s.unlockedIds.includes(l.id));
+    const wrap = $('next-unlock-wrap');
+    if (!next) {
+      wrap.classList.add('hidden');
+      return;
+    }
+    wrap.classList.remove('hidden');
+    const pct = Math.min(100, Math.floor((s.points / next.cost) * 100));
+    $('next-unlock-label').textContent = `Next: ${next.name}`;
+    $('next-unlock-pct').textContent   = `${pct}%`;
+    $('next-unlock-bar').style.width   = `${pct}%`;
+  };
+
+  /* ── Prestige button ── */
+  const updatePrestigeBtn = () => {
+    const s = State.get();
+    const allUnlocked = LEGENDS.every(l => s.unlockedIds.includes(l.id));
+    $('prestige-btn').classList.toggle('hidden', !allUnlocked);
+  };
+
+  /* ── Tab switching ── */
+  const showTab = (tab) => {
+    ['gallery', 'collection', 'stats'].forEach(t => {
+      document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+      document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    });
+    if (tab === 'stats') renderStats();
+  };
+
+  /* ── Float-up label ── */
+  const spawnFloat = (x, y, text) => {
+    const el = document.createElement('div');
+    el.className = 'float-label';
+    el.textContent = text;
+    el.style.left  = `${x - 16}px`;
+    el.style.top   = `${y - 20}px`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  };
+
+  /* ── Full refresh ── */
+  const refresh = () => {
+    updateHUD();
+    updateJersey();
+    renderGallery();
+    updateNextUnlock();
+    updatePrestigeBtn();
+  };
+
+  return { refresh, updateHUD, updateNextUnlock, updatePrestigeBtn, renderStats, showTab, spawnFloat };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════ */
+function currentPPC() {
+  const s = State.get();
+  const legend = s.activeId ? LEGENDS.find(l => l.id === s.activeId) : null;
+  const base = legend ? legend.ppc : 1;
+  return base * s.prestigeMultiplier;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GAME CONTROLLER
+══════════════════════════════════════════════════════════════ */
+const Game = (() => {
+
+  const handleClick = (event) => {
+    const s   = State.get();
+    const ppc = currentPPC();
+    const newPoints = s.points + ppc;
+
+    State.update({
+      points:      newPoints,
+      totalPoints: s.totalPoints + ppc,
+      clickCount:  s.clickCount + 1,
+    });
+
+    // Get click coordinates for the float label
+    let cx, cy;
+    if (event.touches && event.touches.length) {
+      cx = event.touches[0].clientX;
+      cy = event.touches[0].clientY;
+    } else if (typeof event.clientX === 'number' && event.clientX !== 0) {
+      cx = event.clientX;
+      cy = event.clientY;
+    } else {
+      // Keyboard activation — center float on the jersey button
+      const rect = document.getElementById('jersey-btn').getBoundingClientRect();
+      cx = rect.left + rect.width / 2;
+      cy = rect.top + rect.height / 2;
+    }
+    UI.spawnFloat(cx, cy, `+${ppc}`);
+
+    UI.updateHUD();
+    UI.updateNextUnlock();
+
+    // Auto-check unlocks
+    LEGENDS.forEach(l => {
+      if (!State.get().unlockedIds.includes(l.id) && State.get().points >= l.cost) {
+        _tryAutoUnlock(l);
+      }
+    });
+  };
+
+  const _tryAutoUnlock = (legend) => {
+    // Points are milestones — they are never deducted. Reaching the threshold triggers the unlock.
+    const s = State.get();
+    if (s.unlockedIds.includes(legend.id)) return;
+    const newUnlocked = [...s.unlockedIds, legend.id];
+    State.update({ unlockedIds: newUnlocked });
+    _showUnlockToast(legend);
+    // Auto-activate the highest-tier unlocked legend
+    State.update({ activeId: legend.id });
+    UI.refresh();
+  };
+
+  const _showUnlockToast = (legend) => {
+    const toast = document.createElement('div');
+    toast.className = `
+      fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+      bg-byu-blue border-2 border-yellow-300 text-white
+      font-varsity text-lg px-6 py-3 rounded-xl shadow-2xl
+      flex items-center gap-2
+    `;
+    toast.innerHTML = `🏈 LEGEND UNLOCKED: <span class="text-yellow-300">${legend.name}</span> — ${legend.title}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity .5s';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 600);
+    }, 3000);
+  };
+
+  const unlockOrActivate = (id) => {
+    const s = State.get();
+    if (s.unlockedIds.includes(id)) {
+      // Just activate
+      State.update({ activeId: id });
+      UI.refresh();
+      return;
+    }
+    const legend = LEGENDS.find(l => l.id === id);
+    if (s.points < legend.cost) return; // not enough
+    const newUnlocked = [...s.unlockedIds, legend.id];
+    // Points are milestones — no deduction needed, but deduct for feel
+    State.update({
+      unlockedIds: newUnlocked,
+      activeId: id,
+    });
+    _showUnlockToast(legend);
+    UI.refresh();
+  };
+
+  const prestige = () => {
+    const s = State.get();
+    const allUnlocked = LEGENDS.every(l => s.unlockedIds.includes(l.id));
+    if (!allUnlocked) return;
+
+    const confirmed = window.confirm(
+      `⭐ PRESTIGE ⭐\n\nYou will reset all progress, but your Cougar Points multiplier will double to ×${s.prestigeMultiplier * 2}!\n\nAre you ready to become a Cougar Legend?`
+    );
+    if (!confirmed) return;
+
+    const newLevel = s.prestigeLevel + 1;
+    const newMult  = Math.pow(2, newLevel); // 2^n
+    State.update({
+      points:             0,
+      unlockedIds:        [],
+      activeId:           null,
+      prestigeLevel:      newLevel,
+      prestigeMultiplier: newMult,
+    });
+    UI.refresh();
+
+    // Celebrate
+    const toast = document.createElement('div');
+    toast.className = `
+      fixed inset-0 flex items-center justify-center z-50 bg-black/70
+    `;
+    toast.innerHTML = `
+      <div class="bg-byu-navy border-4 border-yellow-300 rounded-2xl p-8 text-center max-w-sm mx-4">
+        <div class="font-varsity text-5xl text-yellow-300 mb-2">⭐ PRESTIGE ${newLevel} ⭐</div>
+        <div class="text-white text-lg mb-4">You are now a <span class="text-yellow-300 font-bold">×${newMult}</span> Cougar Legend!</div>
+        <button onclick="this.closest('.fixed').remove()" class="bg-yellow-400 text-byu-navy font-varsity text-xl px-8 py-3 rounded-lg hover:bg-yellow-300 transition">LET'S GO COUGARS!</button>
+      </div>`;
+    document.body.appendChild(toast);
+  };
+
+  const showTab = (tab) => UI.showTab(tab);
+
+  const init = () => {
+    State.load();
+    UI.refresh();
+
+    // Touch support for jersey
+    document.getElementById('jersey-btn').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      Game.handleClick(e);
+    }, { passive: false });
+  };
+
+  return { handleClick, unlockOrActivate, prestige, showTab, init };
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', Game.init);
+</script>
+
+</body>
+</html>
