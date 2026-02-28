@@ -578,6 +578,8 @@ const UPGRADES = [
   { id: 'auto5', name: 'Dynasty Mode', desc: '+1500 pts/sec passively', cost: 250000, pps: 1500 },
 ];
 
+const MAX_PRESTIGE_LEVEL = 2; // prestige caps at ×4 (2^2)
+
 /* ══════════════════════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════════════════════ */
@@ -1003,7 +1005,8 @@ const UI = (() => {
   const updatePrestigeBtn = () => {
     const s = State.get();
     const allUnlocked = LEGENDS.every(l => s.unlockedIds.includes(l.id));
-    $('prestige-btn').classList.toggle('hidden', !allUnlocked);
+    const atMaxPrestige = s.prestigeLevel >= MAX_PRESTIGE_LEVEL;
+    $('prestige-btn').classList.toggle('hidden', !allUnlocked || atMaxPrestige);
   };
 
   /* ── Tab switching ── */
@@ -1208,6 +1211,7 @@ const Game = (() => {
     const s = State.get();
     const allUnlocked = LEGENDS.every(l => s.unlockedIds.includes(l.id));
     if (!allUnlocked) return;
+    if (s.prestigeLevel >= MAX_PRESTIGE_LEVEL) return;
 
     const confirmed = window.confirm(
       `⭐ PRESTIGE ⭐\n\nYou will reset all progress, but your Cougar Points multiplier will double to ×${s.prestigeMultiplier * 2}!\n\nAre you ready to become a Cougar Legend?`
