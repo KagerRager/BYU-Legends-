@@ -553,6 +553,23 @@ const LEGENDS = [
     tier: 'silver',
   },
   {
+    id: 'max_hall',
+    name: 'Max Hall',
+    number: '15',
+    cost: 15000,
+    ppc: 270,
+    pps: 11,
+    era: 'late-2000s',
+    title: 'The BCS Qualifier',
+    description: 'Led BYU to back-to-back Las Vegas Bowl victories and delivered a legendary rivalry performance in 2009. Hall set multiple BYU passing records and was one of the most clutch quarterbacks in program history.',
+    stat1Label: 'Career passing TDs', stat1: '82',
+    stat2Label: 'Career passing yards', stat2: '9,467',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
+    tier: 'gold',
+  },
+  {
     id: 'collie',
     name: 'Austin Collie',
     number: '17',
@@ -584,6 +601,23 @@ const LEGENDS = [
     jerseyFill: '#001020',
     jerseyStroke: '#C0C0C0',
     accentColor: '#C0C0C0',
+    tier: 'platinum',
+  },
+  {
+    id: 'vai_sikahema',
+    name: 'Vai Sikahema',
+    number: '28',
+    cost: 100000,
+    ppc: 900,
+    pps: 38,
+    era: 'mid-80s',
+    title: 'The Return Specialist',
+    description: 'A key member of BYU\'s 1984 national championship team, Sikahema became the first Tongan-born player in the NFL. His explosive kick returns and fierce determination made him a fan favorite and BYU legend.',
+    stat1Label: 'National Championships', stat1: '1',
+    stat2Label: 'NFL seasons played', stat2: '7',
+    jerseyFill: '#001020',
+    jerseyStroke: '#FFD700',
+    accentColor: '#FFD700',
     tier: 'platinum',
   },
   {
@@ -654,6 +688,23 @@ const LEGENDS = [
     accentColor: '#00e5ff',
     tier: 'legendary',
   },
+  {
+    id: 'bronco',
+    name: 'Bronco Mendenhall',
+    number: '00',
+    cost: 8000000,
+    ppc: 25000,
+    pps: 1000,
+    era: '2005-2015',
+    title: 'The Defensive Mastermind',
+    description: 'Transformed BYU into a consistent national contender as head coach from 2005 to 2015. Won 99 games, led BYU to 10 bowl appearances, and built elite defenses that became the hallmark of the program.',
+    stat1Label: 'Career wins at BYU', stat1: '99',
+    stat2Label: 'Bowl game appearances', stat2: '10',
+    jerseyFill: '#002E5D',
+    jerseyStroke: '#FFFFFF',
+    accentColor: '#FFFFFF',
+    tier: 'legendary',
+  },
 ];
 
 const UPGRADES = [
@@ -664,7 +715,30 @@ const UPGRADES = [
   { id: 'auto5', name: 'Dynasty Mode', desc: '+1500 pts/sec passively', cost: 250000, pps: 1500 },
 ];
 
-const MAX_PRESTIGE_LEVEL = 2; // prestige caps at ×4 (2^2)
+const ACHIEVEMENTS = [
+  { id: 'first_click',   name: 'First Step',        desc: 'Click the jersey once',              icon: '👟', reward: 5,     check: s => s.clickCount >= 1 },
+  { id: 'clicks_100',    name: 'The Century',        desc: '100 total clicks',                   icon: '💯', reward: 100,   check: s => s.clickCount >= 100 },
+  { id: 'clicks_1000',   name: 'Dedicated Fan',      desc: '1,000 total clicks',                 icon: '🤙', reward: 1000,  check: s => s.clickCount >= 1000 },
+  { id: 'first_legend',  name: 'Legend Born',        desc: 'Unlock your first legend',           icon: '🏆', reward: 50,    check: s => s.unlockedIds.length >= 1 },
+  { id: 'five_legends',  name: 'Starting Lineup',    desc: 'Unlock 5 legends',                   icon: '⭐', reward: 2000,  check: s => s.unlockedIds.length >= 5 },
+  { id: 'all_legends',   name: 'BYU Hall of Fame',   desc: 'Unlock every legend',                icon: '🌟', reward: 25000, check: s => s.unlockedIds.length >= LEGENDS.length },
+  { id: 'first_upgrade', name: 'Team Builder',       desc: 'Buy your first auto upgrade',        icon: '📋', reward: 200,   check: s => (s.purchasedUpgrades||[]).length >= 1 },
+  { id: 'all_upgrades',  name: 'Dynasty Champion',   desc: 'Own every auto upgrade',             icon: '🏟️', reward: 10000, check: s => (s.purchasedUpgrades||[]).length >= UPGRADES.length },
+  { id: 'prestige1',     name: 'Cougar Legend',      desc: 'Prestige for the first time',        icon: '🌠', reward: 5000,  check: s => s.prestigeLevel >= 1 },
+  { id: 'hot_streak',    name: 'Hot Streak',         desc: 'Reach a ×1.75 combo multiplier',   icon: '🔥', reward: 500,   check: s => (s.maxComboLevel||0) >= 3 },
+  { id: 'daily',         name: 'Daily Devotion',     desc: 'Return on a new day for a bonus',   icon: '📅', reward: 0,     check: s => (s.dailyBonusClaimed||0) >= 1 },
+];
+
+const MAX_PRESTIGE_LEVEL = 10; // prestige caps at ×1024 (2^10)
+const DAILY_BONUS_BASE = 50;   // base Cougar Points awarded per daily login
+
+// Hail Mary mini-game reward tiers
+const HM_TIERS = [
+  { throws: 25, bonus: 2000, msg: '🏈 LEGENDARY! 25+ throws!' },
+  { throws: 20, bonus: 1000, msg: '🎯 TOUCHDOWN! 20+ throws!' },
+  { throws: 15, bonus: 500,  msg: '⚡ Great arm! 15+ throws!' },
+  { throws: 10, bonus: 200,  msg: '👍 Solid effort!' },
+];
 
 /* ══════════════════════════════════════════════════════════════
    STATE
@@ -685,6 +759,10 @@ const State = (() => {
     soundEnabled: true,    // sound on/off
     jerseyCustomPrimary: '#002E5D', // custom jersey primary color
     jerseyCustomAccent:  '#FFD700', // custom jersey accent/stripe color
+    earnedAchievements: [], // achievement ids earned
+    maxComboLevel: 0,        // highest combo level ever reached
+    lastLoginDate: '',       // YYYY-MM-DD of last visit
+    dailyBonusClaimed: 0,    // total number of daily bonuses claimed
   });
 
   let _state = defaults();
@@ -835,6 +913,9 @@ const Combo = (() => {
     _updateDisplay();
     const lvl = level();
     if (lvl > 0) Sound.combo(lvl);
+    // Track max combo level reached for achievements
+    const s = State.get();
+    if (lvl > (s.maxComboLevel || 0)) State.update({ maxComboLevel: lvl });
     return multiplier();
   };
 
@@ -1123,6 +1204,22 @@ const UI = (() => {
           </div>
         </div>
         ${s.prestigeLevel > 0 ? `<p class="text-yellow-300 text-xs text-center italic">🏆 ${s.prestigeLevel}× Prestige Legend!</p>` : ''}
+        <h4 class="font-varsity text-lg border-b border-white/20 pb-1 mt-4">ACHIEVEMENTS</h4>
+        <div class="grid grid-cols-1 gap-1 mt-2">
+          ${ACHIEVEMENTS.map(a => {
+            const owned = (s.earnedAchievements||[]).includes(a.id);
+            return `<div class="flex items-center gap-2 ${owned ? '' : 'opacity-40'} bg-white/5 rounded p-2">
+              <span class="text-lg leading-none">${a.icon}</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-varsity text-sm ${owned ? 'text-yellow-300' : 'text-white/60'}">${a.name}</div>
+                <div class="text-xs text-white/40 leading-tight">${a.desc}</div>
+              </div>
+              ${a.reward ? `<div class="text-xs text-yellow-300 whitespace-nowrap">+${a.reward.toLocaleString()}</div>` : ''}
+              <span class="${owned ? 'text-green-400' : 'text-white/20'} text-sm">${owned ? '✓' : '○'}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        <p class="text-white/30 text-xs text-center italic mt-2">${(s.earnedAchievements||[]).length}/${ACHIEVEMENTS.length} achievements earned</p>
       </div>`;
   };
 
@@ -1339,6 +1436,7 @@ const Game = (() => {
 
     UI.updateHUD();
     UI.updateNextUnlock();
+    checkAchievements();
 
     // Auto-check unlocks
     LEGENDS.forEach(l => {
@@ -1360,6 +1458,7 @@ const Game = (() => {
     // Auto-activate the highest-tier unlocked legend
     State.update({ activeId: legend.id });
     UI.refresh();
+    checkAchievements();
   };
 
   const _showUnlockToast = (legend) => {
@@ -1398,6 +1497,7 @@ const Game = (() => {
     Sound.unlock();
     Particles.flash();
     UI.refresh();
+    checkAchievements();
   };
 
   const buyUpgrade = (uid) => {
@@ -1412,6 +1512,7 @@ const Game = (() => {
     Sound.unlock();
     UI.refresh();
     UI.renderUpgrades();
+    checkAchievements();
   };
 
   const prestige = () => {
@@ -1437,6 +1538,7 @@ const Game = (() => {
     });
     Sound.prestige();
     UI.refresh();
+    checkAchievements();
 
     // Celebrate
     const toast = document.createElement('div');
@@ -1466,9 +1568,54 @@ const Game = (() => {
     UI.renderCustomize();
   };
 
+  const checkAchievements = () => {
+    const s = State.get();
+    const earned = s.earnedAchievements || [];
+    const newlyEarned = ACHIEVEMENTS.filter(a => !earned.includes(a.id) && a.check(s));
+    if (newlyEarned.length === 0) return;
+    const newIds = [...earned, ...newlyEarned.map(a => a.id)];
+    const reward = newlyEarned.reduce((t, a) => t + a.reward, 0);
+    const s2 = State.get();
+    State.update({ earnedAchievements: newIds, points: s2.points + reward, totalPoints: s2.totalPoints + reward });
+    if (reward > 0) UI.updateHUD();
+    newlyEarned.forEach((a, i) => setTimeout(() => {
+      const t = document.createElement('div');
+      t.className = 'fixed bottom-6 right-4 z-50 bg-yellow-900/95 border-2 border-yellow-400 text-white font-varsity text-sm px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2';
+      t.innerHTML = `${a.icon} ACHIEVEMENT: <span class="text-yellow-300 ml-1">${a.name}</span>${a.reward ? `<span class="text-green-300 ml-2">+${a.reward.toLocaleString()}</span>` : ''}`;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.transition = 'opacity .5s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 600); }, 3500);
+    }, i * 700));
+  };
+
+  const _checkDailyBonus = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const s = State.get();
+    if (s.lastLoginDate === today) return;
+    const streak = (s.dailyBonusClaimed || 0) + 1;
+    const bonus = Math.floor(DAILY_BONUS_BASE * (s.prestigeMultiplier || 1) * Math.min(streak, 10));
+    State.update({ lastLoginDate: today, dailyBonusClaimed: streak, points: s.points + bonus, totalPoints: s.totalPoints + bonus });
+    UI.updateHUD();
+    const t = document.createElement('div');
+    t.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-green-800 border-2 border-yellow-300 text-white font-varsity text-lg px-6 py-4 rounded-xl shadow-2xl text-center';
+    t.innerHTML = `📅 DAILY BONUS<br><span class="text-yellow-300 text-2xl">+${bonus.toLocaleString()} pts</span><br><span class="text-xs text-white/70">Day ${streak} streak!</span>`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .5s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 600); }, 4500);
+    checkAchievements();
+  };
+
   const init = () => {
     State.load();
     UI.refresh();
+    _checkDailyBonus();
+    checkAchievements();
+
+    // Global keyboard shortcut: Space anywhere to click jersey
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A'].includes(e.target.tagName)) {
+        e.preventDefault();
+        handleClick({ clientX: 0, clientY: 0 });
+      }
+    });
 
     // Touch support for jersey
     document.getElementById('jersey-btn').addEventListener('touchstart', (e) => {
@@ -1509,7 +1656,7 @@ const Game = (() => {
     }, 1000);
   };
 
-  return { handleClick, unlockOrActivate, buyUpgrade, prestige, showTab, setJerseyColor, init };
+  return { handleClick, unlockOrActivate, buyUpgrade, prestige, showTab, setJerseyColor, checkAchievements, init };
 })();
 
 /* ══════════════════════════════════════════════════════════════
@@ -1528,6 +1675,7 @@ const MiniGames = (() => {
   const _st = {
     fg: { active: false, val: 0, dir: 1, speed: 1.5, animId: null, wins: 0, total: 0 },
     ft: { active: false, val: 0, dir: 1, speed: 1.2, animId: null, wins: 0, total: 0 },
+    hm: { active: false, clicks: 0, timeLeft: 0, timerId: null, best: 0, total: 0 },
   };
 
   /* ── Field Goal Kick ── */
@@ -1686,13 +1834,81 @@ const MiniGames = (() => {
           </div>
           <div id="mg-ft-res" class="text-center font-varsity text-base text-orange-300 min-h-[1.4rem]"></div>
         </div>
+
+        <!-- Hail Mary Pass -->
+        <div class="rounded-xl border border-green-500/40 bg-byu-navy/70 p-4 shadow-lg">
+          <h3 class="font-varsity text-xl tracking-wide border-b border-white/20 pb-2 mb-3">🏈 HAIL MARY PASS</h3>
+          <p class="text-xs text-white/50 text-center mb-3">Click as fast as you can in <strong class="text-white/70">5 seconds</strong>! More throws = bigger bonus!</p>
+          <div class="flex items-center justify-around mb-3 text-center">
+            <div><div id="mg-hm-clicks" class="font-varsity text-4xl text-green-300">${_st.hm.active ? _st.hm.clicks : 0}</div><div class="text-xs text-white/50">throws</div></div>
+            <div><div id="mg-hm-timer" class="font-varsity text-4xl text-yellow-300">${_st.hm.active ? _st.hm.timeLeft : 5}</div><div class="text-xs text-white/50">seconds</div></div>
+            <div><div id="mg-hm-best" class="font-varsity text-4xl text-white/60">${_st.hm.best}</div><div class="text-xs text-white/50">best</div></div>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <button id="mg-hm-btn" onclick="MiniGames.startHailMary()"
+              class="flex-1 py-3 rounded font-varsity text-base tracking-wide bg-green-700 hover:bg-green-600 text-white transition">
+              ${_st.hm.active ? '🏈 THROW!' : (_st.hm.total > 0 ? '▶ Play Again' : '▶ START HAIL MARY')}
+            </button>
+          </div>
+          <div class="text-xs text-white/40 text-center mb-2">${[...HM_TIERS].reverse().map(t => `${t.throws} throws: +${t.bonus.toLocaleString()}pts`).join(' &nbsp;·&nbsp; ')}</div>
+          <div id="mg-hm-res" class="text-center font-varsity text-base text-green-300 min-h-[1.4rem]"></div>
+        </div>
       </div>`;
     // Restart animation loops if games were active when tab was re-opened
     if (fg.active) { cancelAnimationFrame(fg.animId); _fgTick(); }
     if (ft.active) { cancelAnimationFrame(ft.animId); _ftTick(); }
   };
 
-  return { kickFG, shootFT, render };
+  /* ── Hail Mary Pass ── */
+  const startHailMary = () => {
+    const g = _st.hm;
+    if (g.active) {
+      // Each click during the game counts as a throw
+      g.clicks++;
+      const el = document.getElementById('mg-hm-clicks');
+      if (el) el.textContent = g.clicks;
+      return;
+    }
+    g.active = true;
+    g.clicks = 0;
+    g.timeLeft = 5;
+    g.total++;
+    const btn = document.getElementById('mg-hm-btn');
+    if (btn) btn.textContent = '🏈 THROW!';
+    const res = document.getElementById('mg-hm-res');
+    if (res) res.textContent = '';
+    const clicksEl = document.getElementById('mg-hm-clicks');
+    if (clicksEl) clicksEl.textContent = '0';
+    clearInterval(g.timerId);
+    g.timerId = setInterval(() => {
+      g.timeLeft--;
+      const timerEl = document.getElementById('mg-hm-timer');
+      if (timerEl) timerEl.textContent = g.timeLeft;
+      if (g.timeLeft <= 0) {
+        clearInterval(g.timerId);
+        g.active = false;
+        if (g.clicks > g.best) g.best = g.clicks;
+        const tier = HM_TIERS.find(t => g.clicks >= t.throws);
+        const bonus = tier ? tier.bonus : 0;
+        const msg   = tier ? tier.msg   : '😅 Keep training!';
+        if (tier && tier.bonus >= 1000) Sound.prestige();
+        else if (tier) Sound.unlock();
+        if (bonus) {
+          const s = State.get();
+          State.update({ points: s.points + bonus, totalPoints: s.totalPoints + bonus });
+          UI.updateHUD();
+        }
+        const resEl = document.getElementById('mg-hm-res');
+        if (resEl) resEl.textContent = msg + (bonus ? ` +${bonus} Cougar Pts` : '');
+        const bestEl = document.getElementById('mg-hm-best');
+        if (bestEl) bestEl.textContent = g.best;
+        const btn2 = document.getElementById('mg-hm-btn');
+        if (btn2) btn2.textContent = '▶ Play Again';
+      }
+    }, 1000);
+  };
+
+  return { kickFG, shootFT, startHailMary, render };
 })();
 
 /* ══════════════════════════════════════════════════════════════
